@@ -26,7 +26,39 @@ export default function UploadPage() {
   const [estimateLoading, setEstimateLoading] = useState(false);
   const [estimateError, setEstimateError] = useState<string>("");
   const [extractedParts, setExtractedParts] = useState<string[]>([]);
+  // AI Interpreted Parts state
+  const [aiParts, setAiParts] = useState<any>(null);
+  const [aiPartsLoading, setAiPartsLoading] = useState(false);
+  const [aiPartsError, setAiPartsError] = useState<string>("");
+
   // Estimate copy extraction logic
+  // Analyze images API call
+  const analyzeImages = async () => {
+    setAiPartsLoading(true);
+    setAiPartsError("");
+    try {
+      const formData = new FormData();
+      if (images.front) formData.append("front_image", images.front);
+      if (images.back) formData.append("back_image", images.back);
+      if (images.left) formData.append("left_image", images.left);
+      if (images.right) formData.append("right_image", images.right);
+      const res = await fetch("http://localhost:8000/api/analyze-images/", {
+        method: "POST",
+        headers: {
+          // 'accept': 'application/json',
+          // 'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Failed to analyze images");
+      const data = await res.json();
+      setAiParts(data);
+    } catch (err: any) {
+      setAiPartsError(err?.message || "Error analyzing images");
+    } finally {
+      setAiPartsLoading(false);
+    }
+  };
   const extractEstimateParts = async (file: File) => {
     setEstimateLoading(true);
     setEstimateError("");
@@ -280,7 +312,14 @@ export default function UploadPage() {
               ))}
             </div>
             <div className="flex justify-end mt-8">
-              <button className="bg-black text-white px-8 py-3 rounded font-semibold transition hover:cursor-pointer" onClick={() => setStep(3)} type="button">Next</button>
+              <button
+                className="bg-black text-white px-8 py-3 rounded font-semibold transition hover:cursor-pointer"
+                onClick={() => {
+                  setStep(3);
+                  analyzeImages();
+                }}
+                type="button"
+              >Next</button>
             </div>
           </div>
         )}
@@ -409,6 +448,12 @@ export default function UploadPage() {
                         onClick={() => {
                           setSubmitting(true);
                           setStep(5);
+                          // Save aiParts to localStorage for results page
+                          if (aiParts) {
+                            try {
+                              localStorage.setItem("aiParts", JSON.stringify(aiParts));
+                            } catch {}
+                          }
                           setTimeout(() => {
                             setSubmitting(false);
                             router.push("/results");
