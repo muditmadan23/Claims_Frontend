@@ -1,5 +1,7 @@
 'use client';
 
+'use client';
+
 import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { twMerge } from "tailwind-merge";
@@ -61,7 +63,7 @@ const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(243, 244, 246, 0.7)' }}>
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
@@ -217,16 +219,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ forceCollapsed = false }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
 
-  const [name, setName] = useState("User");
-  const [username, setUsername] = useState("");
+  const [name, setName] = useState("John Doe");
+  const [email, setEmail] = useState("john.doe@email.com");
   const [isClient, setIsClient] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   useEffect(() => {
     setIsClient(true);
     if (typeof window !== 'undefined') {
-      setName(localStorage.getItem("name") || "User");
-      setUsername(localStorage.getItem("username") || "");
+      setName(localStorage.getItem("name") || "John Doe");
+      setEmail(localStorage.getItem("email") || "john.doe@email.com");
     }
   }, []);
 
@@ -247,7 +249,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ forceCollapsed = false }) => {
       {/* Mobile menu button */}
       <button
         onClick={() => setSidebarOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-md"
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-md cursor-pointer"
       >
         <Menu className="w-6 h-6 text-gray-600" />
       </button>
@@ -270,175 +272,136 @@ export const Sidebar: React.FC<SidebarProps> = ({ forceCollapsed = false }) => {
           "lg:translate-x-0"
         )}
       >
-        <div className={twMerge("flex flex-col h-full", actuallyCollapsed ? "items-center" : "")}>
-          {/* User Profile Section */}
-          <div className={twMerge("p-4 border-b border-gray-200 w-full", actuallyCollapsed ? "px-4" : "px-6")}> 
-            {isClient && (
-              <div className="flex items-center space-x-3">
-                <img
-                  src="/analyst.png"
-                  alt="Analyst"
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-                {!actuallyCollapsed && (
-                  <div>
-                    <div className="font-medium text-sm leading-5 tracking-normal text-black">
-                      {name}
-                    </div>
-                    <div className="font-medium text-[9px] leading-[12px] tracking-[0.4px] text-[#757575]">
-                      {username}
-                    </div>
-                  </div>
-                )}
-              </div>
+        <div className={twMerge("flex flex-col h-full", actuallyCollapsed ? "items-center" : "")}> 
+          {/* Logo and App Name in one line */}
+          <div className={twMerge("flex items-center gap-2 pt-8 pb-6 w-full justify-center", actuallyCollapsed ? "px-2" : "px-6")}> 
+            <img src="/logo.png" alt="MotorClaims Pro" className="w-8 h-8" />
+            {!actuallyCollapsed && (
+              <span className="text-base font-medium text-black tracking-tight leading-5">MotorClaims Pro</span>
             )}
           </div>
 
           {/* Desktop Collapse Button */}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="hidden lg:flex absolute -right-3 top-8 z-10 w-6 h-6 bg-white border-2 border-gray-200 rounded-full items-center justify-center text-gray-500 hover:bg-gray-100"
+            className="hidden lg:flex absolute -right-3 top-8 z-10 w-6 h-6 bg-white border-2 border-gray-200 rounded-full items-center justify-center text-gray-500 hover:bg-gray-100 cursor-pointer"
           >
             <ChevronLeft className={`w-4 h-4 transition-transform ${actuallyCollapsed ? "rotate-180" : ""}`} />
           </button>
 
           {/* Navigation Menu */}
-          <div className={twMerge("flex-1 py-6 w-full", actuallyCollapsed ? "px-4" : "px-6")}>
-            {!actuallyCollapsed && (
-              <div className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-4">MAIN</div>
-            )}
-
-            <ul className="space-y-2">
-              {/* Company Profile and Create Uploader removed for all roles */}
-            </ul>
-
-            {/* New Navigation Options */}
-            <ul className="space-y-2 mt-4">
-              {/* Upload New Claim */}
+          <div className={twMerge("flex-1 py-4 w-full", actuallyCollapsed ? "px-2" : "px-4")}> 
+            <ul className="space-y-1 mt-2">
               <li>
                 <button
                   className={twMerge(
-                    "w-full flex items-center gap-3 p-2 rounded-lg text-sm font-medium tracking-tightest",
-                    "text-[#718096] hover:bg-gray-100",
+                    "w-full flex items-center gap-3 p-2 rounded-lg text-sm font-medium tracking-tightest cursor-pointer transition-colors",
+                    "text-[#222] hover:bg-gray-100",
                     actuallyCollapsed && "justify-center"
                   )}
+                  onClick={() => router.push("/home")}
                 >
-                  <img
-                    src="/uploader.png"
-                    alt="Upload"
-                    className="w-4 h-4 object-contain"
-                  />
-                  {!actuallyCollapsed && <span>Upload New Claim</span>}
+                  <img src="/window.svg" alt="Home" className="w-5 h-5" />
+                  {!actuallyCollapsed && <span>Home</span>}
                 </button>
               </li>
-
-              {/* History Claim */}
               <li>
                 <button
                   className={twMerge(
-                    "w-full flex items-center gap-3 p-2 rounded-lg text-sm font-medium tracking-tightest",
-                    "text-[#718096] hover:bg-gray-100",
+                    "w-full flex items-center gap-3 p-2 rounded-lg text-sm font-medium tracking-tightest cursor-pointer transition-colors",
+                    "text-[#222] hover:bg-gray-100",
                     actuallyCollapsed && "justify-center"
                   )}
+                  onClick={() => router.push("/upload")}
                 >
-                  <img
-                    src="/document.png"
-                    alt="History"
-                    className="w-4 h-4 object-contain"
-                  />
-                  {!actuallyCollapsed && <span>History Claim</span>}
+                  <img src="/upload.png" alt="File a New Claim" className="w-5 h-5" />
+                  {!actuallyCollapsed && <span>File a New Claim</span>}
                 </button>
               </li>
-
-              {/* Car Details */}
               <li>
                 <button
                   className={twMerge(
-                    "w-full flex items-center gap-3 p-2 rounded-lg text-sm font-medium tracking-tightest",
-                    "text-[#718096] hover:bg-gray-100",
+                    "w-full flex items-center gap-3 p-2 rounded-lg text-sm font-medium tracking-tightest cursor-pointer transition-colors bg-[#F6F6F6]",
+                    "text-[#222] hover:bg-gray-100",
                     actuallyCollapsed && "justify-center"
                   )}
+                  onClick={() => router.push("/dashboard")}
                 >
-                  <img
-                    src="/companyProfile.png"
-                    alt="Car Details"
-                    className="w-4 h-4 object-contain"
-                  />
+                  <img src="/document.png" alt="History" className="w-5 h-5" />
+                  {!actuallyCollapsed && <span>History</span>}
+                </button>
+              </li>
+              <li>
+                <button
+                  className={twMerge(
+                    "w-full flex items-center gap-3 p-2 rounded-lg text-sm font-medium tracking-tightest cursor-pointer transition-colors",
+                    "text-[#222] hover:bg-gray-100",
+                    actuallyCollapsed && "justify-center"
+                  )}
+                  onClick={() => router.push("/my-vehicles")}
+                >
+                  <img src="/cardemo.png" alt="Car Details" className="w-5 h-5" />
                   {!actuallyCollapsed && <span>Car Details</span>}
                 </button>
               </li>
-
-              {/* Driver Details */}
               <li>
                 <button
                   className={twMerge(
-                    "w-full flex items-center gap-3 p-2 rounded-lg text-sm font-medium tracking-tightest",
-                    "text-[#718096] hover:bg-gray-100",
+                    "w-full flex items-center gap-3 p-2 rounded-lg text-sm font-medium tracking-tightest cursor-pointer transition-colors",
+                    "text-[#222] hover:bg-gray-100",
                     actuallyCollapsed && "justify-center"
                   )}
+                  onClick={() => router.push("/driver-details")}
                 >
-                  <img
-                    src="/companyProfile.png"
-                    alt="Driver Details"
-                    className="w-4 h-4 object-contain"
-                  />
+                  <img src="/companyProfile.png" alt="Driver Details" className="w-5 h-5" />
                   {!actuallyCollapsed && <span>Driver Details</span>}
                 </button>
               </li>
             </ul>
-
             {!actuallyCollapsed && <div className="w-[208px] h-[2px] rounded-full bg-[#F6F6F6] mx-auto my-4" />}
           </div>
 
           {/* Bottom Section */}
-          <div className={twMerge("p-4 w-full", actuallyCollapsed ? "px-2" : "px-6")}>
-            {!actuallyCollapsed ? (
-              <ul className="space-y-1">
-                <li>
-                  <button
-                    onClick={() => setShowSupportModal(true)}
-                    className="flex items-center gap-3 p-2 text-sm font-medium leading-5 tracking-tightest text-[#757575] hover:bg-gray-100 rounded-lg w-full"
-                  >
-                    <HelpCircle className="w-5 h-5" />
-                    <span>Help & Support</span>
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-3 p-2 text-sm font-medium leading-5 tracking-tightest text-[#D55F5A] hover:bg-red-50 rounded-lg w-full"
-                  >
-                    <LogOut className="w-5 h-5" />
-                    <span>Logout Account</span>
-                  </button>
-                </li>
-              </ul>
-            ) : (
-              <ul className="space-y-2">
-                <li>
-                  <button
-                    onClick={() => setShowSupportModal(true)}
-                    className="flex justify-center p-2 rounded-lg text-[#757575] hover:bg-gray-100 w-full"
-                  >
-                    <HelpCircle className="w-5 h-5" />
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={handleLogout}
-                    className="flex justify-center p-2 rounded-lg text-[#D55F5A] hover:bg-red-50 w-full"
-                  >
-                    <LogOut className="w-5 h-5" />
-                  </button>
-                </li>
-              </ul>
-            )}
+          <div className={twMerge("pb-6 w-full mt-auto", actuallyCollapsed ? "px-2" : "px-4")}> 
+            <ul className="space-y-1">
+              <li>
+                <button
+                  onClick={() => setShowSupportModal(true)}
+                  className="flex items-center gap-3 p-2 text-sm font-medium leading-5 tracking-tightest text-[#757575] hover:bg-gray-100 rounded-lg w-full cursor-pointer transition-colors"
+                >
+                  <img src="/help.svg" alt="Help & Support" className="w-5 h-5" />
+                  {!actuallyCollapsed && <span>Help & Support</span>}
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-3 p-2 text-sm font-medium leading-5 tracking-tightest text-[#D55F5A] hover:bg-red-50 rounded-lg w-full cursor-pointer transition-colors"
+                >
+                  <img src="/logout.svg" alt="Logout Account" className="w-5 h-5" />
+                  {!actuallyCollapsed && <span>Logout Account</span>}
+                </button>
+              </li>
+            </ul>
+            {/* User Profile Section below logout */}
+            <div className={twMerge("flex items-center w-full mt-6", actuallyCollapsed ? "justify-center px-2" : "px-4")}> 
+              <img
+                src="/analyst.png"
+                alt="Profile"
+                className="w-10 h-10 rounded-full object-cover border border-gray-200"
+              />
+              {!actuallyCollapsed && (
+                <div className="ml-3">
+                  <div className="font-semibold text-sm text-black leading-5">{name}</div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         <button
           onClick={() => setSidebarOpen(false)}
-          className="lg:hidden absolute top-4 right-4 p-2 text-gray-500 hover:text-gray-700"
+          className="lg:hidden absolute top-4 right-4 p-2 text-gray-500 hover:text-gray-700 cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>

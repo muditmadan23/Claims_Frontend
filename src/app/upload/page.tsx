@@ -1,92 +1,441 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import Navbar from "@/components/Navbar";
+import FadedTextLoader from "@/components/FadedTextLoader";
+import { API_BASE_URL } from "@/lib/config";
 
 export default function UploadPage() {
-  type Side = "left" | "right" | "front" | "back";
-  const [images, setImages] = useState<Record<Side, File | null>>({
-    left: null,
-    right: null,
+  const router = useRouter();
+
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
+  const [step, setStep] = useState(1);
+  const [images, setImages] = useState<{ [k: string]: File | null }>({
     front: null,
     back: null,
+    left: null,
+    right: null,
   });
-  const [previews, setPreviews] = useState<Record<Side, string>>({
-    left: "",
-    right: "",
-    front: "",
-    back: "",
-  });
+  const [claimForm, setClaimForm] = useState<File | null>(null);
+  const [claimStory, setClaimStory] = useState<string>("");
+  const [claimLoading, setClaimLoading] = useState(false);
+  const [claimError, setClaimError] = useState<string>("");
+  const [estimateCopy, setEstimateCopy] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-
-  const handleFileChange = (side: Side) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    setImages((prev) => ({ ...prev, [side]: file }));
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviews((prev) => ({ ...prev, [side]: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
-    } else {
-      setPreviews((prev) => ({ ...prev, [side]: "" }));
+  const [estimateLoading, setEstimateLoading] = useState(false);
+  const [estimateError, setEstimateError] = useState<string>("");
+  const [extractedParts, setExtractedParts] = useState<string[]>([]);
+  // Estimate copy extraction logic
+  const extractEstimateParts = async (file: File) => {
+    setEstimateLoading(true);
+    setEstimateError("");
+    setExtractedParts([]);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+  const res = await fetch(`${API_BASE_URL}/api/docs/extract-estimate-parts`, {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Failed to extract estimate parts");
+      const data = await res.json();
+      setExtractedParts(data?.extracted_parts || []);
+    } catch (err: any) {
+      setEstimateError(err?.message || "Error extracting estimate parts");
+    } finally {
+      setEstimateLoading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-    setSubmitting(true);
-    // Here you would send the images to your backend
-    // For now, just simulate success
-    setTimeout(() => {
-      setSuccess("Images uploaded successfully!");
-      setSubmitting(false);
-    }, 1200);
+  const handleEstimateCopyChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setEstimateCopy(file);
+    if (!file) return;
+    await extractEstimateParts(file);
+  };
+
+  // Hardcoded vehicle options
+  const vehicleOptions = [
+    {
+      id: "1",
+      name: "2020 Toyota Camry",
+      make: "Toyota",
+      model: "Camry",
+      year: "2020",
+      license: "ABC 123",
+      vin: "1234XXXXXXXXDEF",
+      policy: "POL1234567"
+    },
+    {
+      id: "2",
+      name: "2022 Honda CR-V",
+      make: "Honda",
+      model: "CR-V",
+      year: "2022",
+      license: "XYZ 789",
+      vin: "FECXXXXXXX4321",
+      policy: "POL7654321"
+    },
+    {
+      id: "3",
+      name: "2019 Ford F-150",
+      make: "Ford",
+      model: "F-150",
+      year: "2019",
+      license: "LMN 456",
+      vin: "0987XXXXXXXDEF",
+      policy: "POL2468101"
+    },
+  ];
+
+  // Hardcoded driver details
+  const driver = {
+    firstName: "Jane",
+    lastName: "Doe",
+    email: "jane.doe@email.com",
+    phone: "+1 (555) 123-4567",
+    dob: "1990-05-15",
+    licenseState: "CA"
+  };
+
+  const selectedVehicle = useMemo(
+    () => vehicleOptions.find((v) => v.id === selectedVehicleId),
+    [selectedVehicleId]
+  );
+
+  const handleImageChange = (side: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setImages((prev) => ({ ...prev, [side]: file }));
+  };
+
+  const extractClaimStory = async (file: File) => {
+    setClaimLoading(true);
+    setClaimError("");
+    setClaimStory("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`${API_BASE_URL}/api/docs/extract/claim-story`, {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Failed to extract claim story");
+      const data = await res.json();
+      const story = data?.claim_story?.trim?.() || "";
+      if (story) {
+        setClaimStory(story);
+      } else {
+        setClaimError("No claim story found in response.");
+      }
+    } catch (err: any) {
+      setClaimError(err?.message || "Error extracting claim story");
+    } finally {
+      setClaimLoading(false);
+    }
+  };
+
+  const handleClaimFormChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setClaimForm(file);
+    if (!file) return;
+    await extractClaimStory(file);
+  };
+
+  const handleCopyStory = async () => {
+    if (!claimStory) return;
+    try {
+      await navigator.clipboard.writeText(claimStory);
+    } catch {}
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 py-8">
-      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-6 text-center">Upload Images</h2>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {([
-            { label: "Left", key: "left" },
-            { label: "Right", key: "right" },
-            { label: "Front", key: "front" },
-            { label: "Back", key: "back" },
-          ] as { label: string; key: Side }[]).map(({ label, key }) => (
-            <div key={key} className="flex flex-col items-center">
-              <label className="mb-2 font-medium text-gray-700">{label} Image</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange(key)}
-                className="mb-2"
-                required
-              />
-              {previews[key] && (
-                <img
-                  src={previews[key]}
-                  alt={`${label} preview`}
-                  className="w-32 h-32 object-cover rounded border"
-                />
-              )}
+    <div className="min-h-screen bg-[#fafbfc]">
+      <Navbar />
+      <main className="flex flex-col items-center py-8">
+        <div className="w-full max-w-5xl mx-auto mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex-1 flex items-center">
+              {/* Progress bar with 5 steps, last step is Results */}
+              <div className="flex flex-col items-center flex-1">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs mb-1 ${step >= 1 ? 'bg-black' : 'bg-gray-200 text-black'}`}>1</div>
+                <span className={`text-xs font-medium ${step === 1 ? 'text-black' : 'text-gray-400'}`}>Details</span>
+              </div>
+              <div className={`h-1 ${(step > 1) ? 'bg-black' : 'bg-gray-200'} flex-1 mx-2`} />
+              <div className="flex flex-col items-center flex-1">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs mb-1 ${step >= 2 ? 'bg-black' : 'bg-gray-200 text-black'}`}>2</div>
+                <span className={`text-xs font-medium ${step === 2 ? 'text-black' : 'text-gray-400'}`}>Upload Images</span>
+              </div>
+              <div className={`h-1 ${(step > 2) ? 'bg-black' : 'bg-gray-200'} flex-1 mx-2`} />
+              <div className="flex flex-col items-center flex-1">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs mb-1 ${step >= 3 ? 'bg-black' : 'bg-gray-200 text-black'}`}>3</div>
+                <span className={`text-xs font-medium ${step === 3 ? 'text-black' : 'text-gray-400'}`}>Claim Form</span>
+              </div>
+              <div className={`h-1 ${(step > 3) ? 'bg-black' : 'bg-gray-200'} flex-1 mx-2`} />
+              <div className="flex flex-col items-center flex-1">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs mb-1 ${step >= 4 ? 'bg-black' : 'bg-gray-200 text-black'}`}>4</div>
+                <span className={`text-xs font-medium ${step === 4 ? 'text-black' : 'text-gray-400'}`}>Estimate Copy</span>
+              </div>
+              <div className={`h-1 ${(step > 4) ? 'bg-black' : 'bg-gray-200'} flex-1 mx-2`} />
+              <div className="flex flex-col items-center flex-1">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs mb-1 ${step === 5 ? 'bg-black' : 'bg-gray-200 text-black'}`}>5</div>
+                <span className={`text-xs font-medium ${step === 5 ? 'text-black' : 'text-gray-400'}`}>Results</span>
+              </div>
             </div>
-          ))}
-          {error && <div className="text-red-500 text-center">{error}</div>}
-          {success && <div className="text-green-600 text-center">{success}</div>}
-          <button
-            type="submit"
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
-            disabled={submitting}
-          >
-            {submitting ? "Uploading..." : "Submit"}
-          </button>
-        </form>
-      </div>
+          </div>
+        </div>
+
+        {/* Step 1: Select Car & Show Locked Details */}
+        {step === 1 && (
+          <div className="w-full max-w-5xl mx-auto">
+
+            <div className="bg-white rounded-xl shadow p-6 mb-6">
+              <label className="block text-sm font-medium mb-2">Select Vehicle</label>
+              <select
+                className="w-full border border-gray-200 rounded px-3 py-2 bg-white"
+                value={selectedVehicleId}
+                onChange={(e) => setSelectedVehicleId(e.target.value)}
+              >
+                <option value="">Choose a vehicle...</option>
+                {vehicleOptions.map((v) => (
+                  <option key={v.id} value={v.id}>{v.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {selectedVehicle && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-xl shadow p-6">
+                  <h3 className="text-lg font-semibold mb-4">Vehicle Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {[{label:'Make',value:selectedVehicle.make},{label:'Model',value:selectedVehicle.model},{label:'Year',value:selectedVehicle.year},{label:'License Plate',value:selectedVehicle.license},{label:'VIN',value:selectedVehicle.vin}].map((f)=> (
+                      <div key={f.label}>
+                        <label className="block text-sm font-medium mb-1">{f.label}</label>
+                        <input value={f.value} readOnly tabIndex={0} className="w-full border border-gray-200 rounded px-3 py-2 bg-gray-50 text-gray-700 cursor-text" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow p-6">
+                  <h3 className="text-lg font-semibold mb-4">Driver Details</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {[{label:'First Name',value:driver.firstName},{label:'Last Name',value:driver.lastName},{label:'Email',value:driver.email},{label:'Phone',value:driver.phone},{label:'Date of Birth',value:driver.dob},{label:'License State',value:driver.licenseState}].map((f)=> (
+                      <div key={f.label} className="relative">
+                        <label className="block text-sm font-medium mb-1">{f.label}</label>
+                        <input value={f.value} readOnly tabIndex={0} className="w-full border border-gray-200 rounded px-3 py-2 bg-gray-50 text-gray-700 cursor-text" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    className="bg-black text-white px-8 py-3 rounded font-semibold hover:bg-gray-900 transition cursor-pointer"
+                    onClick={() => setStep(2)}
+                  >
+                    Continue to Upload Images
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 2: Upload Car Images */}
+        {step === 2 && (
+          <div className="w-full max-w-5xl mx-auto">
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[
+                { key: 'front', label: 'Front View', desc: "Upload a clear image of the car's front view." },
+                { key: 'back', label: 'Back View', desc: "Upload a clear image of the car's back view." },
+                { key: 'left', label: 'Left Side View', desc: "Upload a clear image of the car's left side view." },
+                { key: 'right', label: 'Right Side View', desc: "Upload a clear image of the car's right side view." },
+              ].map(({ key, label, desc }) => (
+                <div
+                  key={key}
+                  className={`bg-white rounded-xl border flex flex-col items-center shadow-sm transition-all duration-300 overflow-hidden ${images[key] ? 'p-4' : 'p-2'} ${images[key] ? '' : 'max-h-32'}`}
+                  style={{ minHeight: images[key] ? 280 : 80 }}
+                >
+                  <div className={`w-full ${images[key] ? 'h-44 mb-4' : 'h-12 mb-2'} rounded overflow-hidden flex items-center justify-center bg-gray-100 transition-all duration-300`}>
+                    {/* Show uploaded image in top area only after upload */}
+                    {images[key] ? (
+                      <img
+                        src={URL.createObjectURL(images[key] as File)}
+                        alt={label}
+                        className="object-contain w-full max-h-44"
+                      />
+                    ) : null}
+                  </div>
+                  <div className="font-semibold text-base mb-1">{label}</div>
+                  <div className="text-xs text-gray-500 mb-4 text-center">{desc}</div>
+                  <label className="w-full">
+                    <input type="file" accept="image/*" className="hidden" onChange={handleImageChange(key)} />
+                    <div className="w-full bg-gray-100 rounded px-4 py-2 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200 transition">Upload</div>
+                  </label>
+                  {/* No preview below upload button */}
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end mt-8">
+              <button className="bg-black text-white px-8 py-3 rounded font-semibold transition hover:cursor-pointer" onClick={() => setStep(3)} type="button">Next</button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Upload Claim Form */}
+
+        {step === 3 && (
+          <>
+            <div className="w-full max-w-3xl mx-auto">
+              <div className="bg-white rounded-xl shadow p-8">
+                <h2 className="text-xl font-bold mb-2">Upload Claim Form</h2>
+                <p className="text-gray-500 mb-6">Please upload your motor insurance claim form document. PDF or JPG format preferred.</p>
+                <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 flex flex-col items-center mb-8">
+                  <div className="font-semibold text-gray-700 mb-1">Drag & drop your file here</div>
+                  <div className="text-xs text-gray-400 mb-4">or click to browse</div>
+                  <label>
+                    <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={handleClaimFormChange} />
+                    <div className="bg-gray-100 rounded px-4 py-2 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200 transition">Browse Files</div>
+                  </label>
+                  {claimForm && <div className="mt-4 text-sm text-green-600">{claimForm.name}</div>}
+                </div>
+              </div>
+            </div>
+            {/* Always render the claim story section as a separate div underneath the upload form when a file is selected or loading */}
+            {(claimForm || claimLoading) && (
+              <div className="w-full max-w-3xl mx-auto mt-8">
+                <div className="bg-white rounded-xl shadow p-8">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold">Claim Story</h3>
+                      <p className="text-sm text-gray-500 mt-1">{claimLoading ? "Extracting from your document..." : claimStory ? "Review the extracted narrative below." : "The claim story will appear here after upload."}</p>
+                    </div>
+                    {/* Copy button removed as requested */}
+                  </div>
+
+                  {claimLoading && (
+                    <div className="mt-6">
+                      <FadedTextLoader lines={3} className="max-w-2xl" />
+                    </div>
+                  )}
+
+                  {claimError && !claimLoading && (
+                    <div className="mt-4 border border-red-200 bg-red-50 text-red-700 rounded p-4 flex items-start justify-between">
+                      <div className="text-sm">{claimError}</div>
+                      {claimForm ? (
+                        <button type="button" className="ml-4 px-3 py-1.5 rounded bg-black text-white hover:bg-gray-900 transition" onClick={() => extractClaimStory(claimForm as File)}>Retry</button>
+                      ) : null}
+                    </div>
+                  )}
+
+                  {claimStory && !claimLoading && !claimError && (
+                    <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-4 text-gray-800 leading-relaxed">
+                      {claimStory}
+                    </div>
+                  )}
+
+                  <div className="mt-6 flex justify-end">
+                    {claimStory && !claimLoading ? (
+                      <button className="px-8 py-3 rounded font-semibold transition bg-black text-white hover:bg-gray-900 cursor-pointer" onClick={() => setStep(4)} type="button">Continue</button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Step 4: Upload Estimate Copy */}
+        {step === 4 && (
+          <>
+            <div className="w-full max-w-3xl mx-auto">
+              <div className="bg-white rounded-xl shadow p-8">
+                <h2 className="text-xl font-bold mb-2">Upload Estimate Copy</h2>
+                <p className="text-gray-500 mb-6">Please upload your estimate copy document. PDF or JPG format preferred.</p>
+                <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 flex flex-col items-center mb-8">
+                  <div className="font-semibold text-gray-700 mb-1">Drag & drop your file here</div>
+                  <div className="text-xs text-gray-400 mb-4">or click to browse</div>
+                  <label>
+                    <input type="file" accept=".pdf,.jpg,.jpeg,.png,.txt" className="hidden" onChange={handleEstimateCopyChange} />
+                    <div className="bg-gray-100 rounded px-4 py-2 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200 transition">Browse Files</div>
+                  </label>
+                  {estimateCopy && <div className="mt-4 text-sm text-green-600">{estimateCopy.name}</div>}
+                </div>
+              </div>
+            </div>
+            {/* Always render the extracted parts section as a separate div underneath the upload form when a file is selected or loading */}
+            {(estimateCopy || estimateLoading) && (
+              <div className="w-full max-w-3xl mx-auto mt-8">
+                <div className="bg-white rounded-xl shadow p-8">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold">Extracted Parts</h3>
+                      <p className="text-sm text-gray-500 mt-1">{estimateLoading ? "Extracting parts from your document..." : extractedParts.length ? "Review the extracted parts below." : "The extracted parts will appear here after upload."}</p>
+                    </div>
+                  </div>
+
+                  {estimateLoading && (
+                    <div className="mt-6">
+                      <FadedTextLoader lines={3} className="max-w-2xl" />
+                    </div>
+                  )}
+
+                  {estimateError && !estimateLoading && (
+                    <div className="mt-4 border border-red-200 bg-red-50 text-red-700 rounded p-4 flex items-start justify-between">
+                      <div className="text-sm">{estimateError}</div>
+                      {estimateCopy ? (
+                        <button type="button" className="ml-4 px-3 py-1.5 rounded bg-black text-white hover:bg-gray-900 transition" onClick={() => extractEstimateParts(estimateCopy as File)}>Retry</button>
+                      ) : null}
+                    </div>
+                  )}
+
+                  {extractedParts.length > 0 && !estimateLoading && !estimateError && (
+                    <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-4 text-gray-800">
+                      <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 list-disc pl-5">
+                        {extractedParts.map((part, idx) => (
+                          <li key={idx} className="py-1 text-base font-medium text-gray-700">{part}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="mt-6 flex justify-end">
+                    {extractedParts.length > 0 && !estimateLoading ? (
+                      <button
+                        className="px-8 py-3 rounded font-semibold transition bg-black text-white hover:bg-gray-900 cursor-pointer"
+                        onClick={() => {
+                          setSubmitting(true);
+                          setStep(5);
+                          setTimeout(() => {
+                            setSubmitting(false);
+                            router.push("/results");
+                          }, 2000);
+                        }}
+                        type="button"
+                      >Submit</button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+        {/* Step 5: Submission Progress Bar */}
+        {step === 5 && (
+          <div className="w-full max-w-3xl mx-auto mt-8">
+            <div className="bg-white rounded-xl shadow p-8 flex flex-col items-center">
+              <h2 className="text-2xl font-bold mb-4 text-blue-700">Submitting...</h2>
+              <div className="w-full bg-gray-200 rounded-full h-4">
+                <div className="bg-blue-600 h-4 rounded-full animate-pulse" style={{ width: '100%' }}></div>
+              </div>
+              <p className="text-gray-700 text-lg mt-4">Please wait while we process your submission.</p>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
