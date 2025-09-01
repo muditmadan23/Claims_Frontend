@@ -87,7 +87,7 @@ function SupportModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
                 <textarea id="message" name="message" required rows={4} value={formData.message} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1F4A75] focus:border-transparent resize-none" placeholder="Please provide detailed information about your inquiry..." />
               </div>
               <div className="pt-4">
-                <button type="submit" disabled={isSubmitting} className="w-full bg-[#1F4A75] text-white py-2 px-4 rounded-lg hover:bg-[#1a3d63] disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center transition-colors">
+                <button type="submit" disabled={isSubmitting} className="w-full bg-black text-white py-2 px-4 rounded-lg hover:bg-gray-900 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center transition-colors">
                   {isSubmitting ? (<><Loader2 className="w-4 h-4 animate-spin mr-2" />Sending...</>) : (<><Send className="w-4 h-4 mr-2" />Send Message</>)}
                 </button>
               </div>
@@ -113,8 +113,6 @@ export default function Navbar() {
           <button onClick={() => router.push('/home')} className="hover:text-[#1F4A75] transition cursor-pointer">Home</button>
           <button onClick={() => router.push('/upload')} className="hover:text-[#1F4A75] transition cursor-pointer">New Claim</button>
           <button onClick={() => router.push('/dashboard')} className="hover:text-[#1F4A75] transition cursor-pointer">History</button>
-          <button onClick={() => router.push('/driver-details')} className="hover:text-[#1F4A75] transition cursor-pointer">Driver Details</button>
-          <button onClick={() => router.push('/my-vehicles')} className="hover:text-[#1F4A75] transition cursor-pointer">Vehicle Details</button>
           <button onClick={() => setShowSupportModal(true)} className="hover:text-[#1F4A75] transition cursor-pointer">Help</button>
           <button
             onClick={() => {

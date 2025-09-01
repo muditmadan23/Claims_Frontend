@@ -14,7 +14,7 @@ export type Vehicle = {
 export const vehicles: Vehicle[] = [
   {
     id: "camry-2020",
-    image: "/toyota-camry.jpg",
+    image: "/camry.png",
     name: "2020 Toyota Camry",
     make: "Toyota",
     model: "Camry",
@@ -26,7 +26,7 @@ export const vehicles: Vehicle[] = [
   },
   {
     id: "crv-2022",
-    image: "/honda-crv.jpg",
+    image: "/crv.png",
     name: "2022 Honda CR-V",
     make: "Honda",
     model: "CR-V",
@@ -38,7 +38,7 @@ export const vehicles: Vehicle[] = [
   },
   {
     id: "f150-2019",
-    image: "/ford-f150.jpg",
+    image: "/f150.png",
     name: "2019 Ford F-150",
     make: "Ford",
     model: "F-150",

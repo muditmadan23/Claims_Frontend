@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import FadedTextLoader from "@/components/FadedTextLoader";
 import { API_BASE_URL } from "@/lib/config";
+import { Shield, Search as SearchIcon, FileText } from "lucide-react";
 
 export default function UploadPage() {
   const router = useRouter();
@@ -17,6 +18,20 @@ export default function UploadPage() {
     left: null,
     right: null,
   });
+  const [licenseImage, setLicenseImage] = useState<File | null>(null);
+  const [policyNumber, setPolicyNumber] = useState<string>("");
+  const [policyLookupLoading, setPolicyLookupLoading] = useState(false);
+  const [policyLookupError, setPolicyLookupError] = useState<string>("");
+  const [detailsUnlocked, setDetailsUnlocked] = useState(false);
+  const [policyDetails, setPolicyDetails] = useState<{
+    insurer: string;
+    policyNumber: string;
+    coverage: string;
+    effectiveFrom: string;
+    effectiveTo: string;
+    status: string;
+    plan: string;
+  } | null>(null);
   const [claimForm, setClaimForm] = useState<File | null>(null);
   const [claimStory, setClaimStory] = useState<string>("");
   const [claimLoading, setClaimLoading] = useState(false);
@@ -141,6 +156,36 @@ export default function UploadPage() {
     setImages((prev) => ({ ...prev, [side]: file }));
   };
 
+  const handleLicenseChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setLicenseImage(file);
+  };
+
+  const lookupPolicy = async () => {
+    const query = policyNumber.trim();
+    if (!query) return;
+    setPolicyLookupLoading(true);
+    setPolicyLookupError("");
+    try {
+      const defaultVehicleId = vehicleOptions[0]?.id || "";
+      setSelectedVehicleId(defaultVehicleId);
+      setPolicyDetails({
+        insurer: "MotorProtect Insurance Co.",
+        policyNumber: query,
+        coverage: "Comprehensive",
+        effectiveFrom: "2024-01-01",
+        effectiveTo: "2024-12-31",
+        status: "Active",
+        plan: "Gold",
+      });
+      setDetailsUnlocked(true);
+    } catch (err: any) {
+      setPolicyLookupError(err?.message || "Error searching policy");
+    } finally {
+      setPolicyLookupLoading(false);
+    }
+  };
+
   const extractClaimStory = async (file: File) => {
     setClaimLoading(true);
     setClaimError("");
@@ -217,26 +262,83 @@ export default function UploadPage() {
           </div>
         </div>
 
-        {/* Step 1: Select Car & Show Locked Details */}
+        {/* Step 1: License Upload + Policy Search, then locked details */}
         {step === 1 && (
           <div className="w-full max-w-5xl mx-auto">
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white rounded-xl shadow p-6">
+                <h3 className="text-lg font-semibold mb-2">Upload Driving License</h3>
+                <p className="text-sm text-gray-500 mb-4">Upload a clear photo or scan of the driver's license.</p>
+                <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 flex flex-col items-center">
+                  <div className="font-semibold text-gray-700 mb-1">Drag & drop your file here</div>
+                  <div className="text-xs text-gray-400 mb-4">or click to browse</div>
+                  <label>
+                    <input type="file" accept=".jpg,.jpeg,.png,.pdf" className="hidden" onChange={handleLicenseChange} />
+                    <div className="bg-gray-100 rounded px-4 py-2 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200 transition">Browse Files</div>
+                  </label>
+                  {licenseImage && <div className="mt-4 text-sm text-green-600">{licenseImage.name}</div>}
+                </div>
+              </div>
 
-            <div className="bg-white rounded-xl shadow p-6 mb-6">
-              <label className="block text-sm font-medium mb-2">Select Vehicle</label>
-              <select
-                className="w-full border border-gray-200 rounded px-3 py-2 bg-white"
-                value={selectedVehicleId}
-                onChange={(e) => setSelectedVehicleId(e.target.value)}
-              >
-                <option value="">Choose a vehicle...</option>
-                {vehicleOptions.map((v) => (
-                  <option key={v.id} value={v.id}>{v.name}</option>
-                ))}
-              </select>
+              <div className="bg-white rounded-xl shadow p-6">
+                <h3 className="text-lg font-semibold mb-2">Search Policy Number</h3>
+                <p className="text-sm text-gray-500 mb-4">Enter the policy number and press Enter to fetch details.</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Enter policy number"
+                    className="flex-1 border border-gray-200 rounded px-3 py-2 bg-white"
+                    value={policyNumber}
+                    onChange={(e) => setPolicyNumber(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        lookupPolicy();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={lookupPolicy}
+                    className="bg-black text-white px-4 py-2 rounded font-semibold hover:bg-gray-900 transition cursor-pointer"
+                  >
+                    <span className="inline-flex items-center"><SearchIcon className="w-4 h-4 mr-2" />Search</span>
+                  </button>
+                </div>
+                {policyLookupLoading && (
+                  <div className="mt-3 text-sm text-gray-500">Searching...</div>
+                )}
+                {policyLookupError && !policyLookupLoading && (
+                  <div className="mt-3 text-sm text-red-600">{policyLookupError}</div>
+                )}
+              </div>
             </div>
 
-            {selectedVehicle && (
-              <div className="space-y-6">
+            {detailsUnlocked && licenseImage && selectedVehicle && (
+              <div className="space-y-6 mt-6">
+                <div className="bg-white rounded-xl shadow p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold flex items-center">
+                      <Shield className="w-5 h-5 mr-2" />
+                      Policy Details
+                    </h3>
+                    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200">Verified</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {policyDetails ? (
+                      <>
+                        {[{label:'Policy Number', value: policyDetails.policyNumber},{label:'Insurer', value: policyDetails.insurer},{label:'Plan', value: policyDetails.plan},{label:'Coverage', value: policyDetails.coverage},{label:'Effective From', value: policyDetails.effectiveFrom},{label:'Effective To', value: policyDetails.effectiveTo},{label:'Status', value: policyDetails.status}].map((f)=> (
+                          <div key={f.label}>
+                            <label className="block text-sm font-medium mb-1">{f.label}</label>
+                            <input value={f.value} readOnly tabIndex={0} className="w-full border border-gray-200 rounded px-3 py-2 bg-gray-50 text-gray-700 cursor-text" />
+                          </div>
+                        ))}
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+
                 <div className="bg-white rounded-xl shadow p-6">
                   <h3 className="text-lg font-semibold mb-4">Vehicle Information</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
