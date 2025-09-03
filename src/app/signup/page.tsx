@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { API_BASE_URL } from '@/lib/config';
 
 interface SignupFormData {
@@ -20,6 +21,7 @@ interface FormErrors {
 }
 
 export default function SignupPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState<SignupFormData>({
     name: '',
     email: '',
@@ -116,8 +118,21 @@ export default function SignupPage() {
       }
 
       const data = await response.json();
-      setSuccessMessage('Account created successfully! Please check your email for verification.');
+      
+      // Store user data and token in localStorage
+      localStorage.setItem('authToken', data.access_token);
+      localStorage.setItem('tokenType', data.token_type);
+      localStorage.setItem('userId', data.user.id.toString());
+      localStorage.setItem('name', data.user.name);
+      localStorage.setItem('email', data.user.email);
+      
+      setSuccessMessage('Account created successfully! You are now logged in.');
       setFormData({ name: '', email: '', password: '', confirmPassword: '' });
+      
+      // Redirect to home page after a short delay
+      setTimeout(() => {
+        router.push('/home');
+      }, 2000);
 
     } catch (error) {
       setErrors({

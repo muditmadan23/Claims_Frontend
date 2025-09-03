@@ -1,6 +1,16 @@
 import { XCircle } from "lucide-react";
 
-export default function RejectedClaimsCard() {
+interface Damage {
+  part: string;
+  reason: string;
+}
+
+interface RejectedClaimsCardProps {
+  damages: Damage[];
+}
+
+export default function RejectedClaimsCard({ damages }: RejectedClaimsCardProps) {
+  const costs = ["$250.00","$380.00","$120.00","$560.00","$90.00","$310.00"];
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
       <div className="flex items-center gap-2 mb-4">
@@ -9,12 +19,22 @@ export default function RejectedClaimsCard() {
         </div>
         <h3 className="text-sm font-semibold text-red-700">Rejected Claims</h3>
       </div>
-      <div>
-        <div className="flex items-start justify-between">
-          <p className="text-sm text-gray-800"><span className="font-medium">Part:</span> Roof</p>
-          <p className="text-sm font-semibold text-gray-900">$900.00</p>
-        </div>
-        <p className="text-xs text-gray-500 mt-1">Damage: Hail damage (policy exclusion)</p>
+      <div className="space-y-2.5">
+        {damages.length > 0 ? (
+          damages.map((damage, index) => (
+            <div key={index} className="group relative flex items-center justify-between text-sm hover:bg-gray-50 rounded-md px-2 py-1.5 transition">
+              <p className="text-sm text-gray-800">{damage.part}</p>
+              <span className="text-sm font-semibold text-gray-900">{costs[index % costs.length]}</span>
+              <div className="absolute left-0 top-full mt-1 z-10 hidden group-hover:block w-max max-w-xs">
+                <div className="bg-white border border-gray-200 rounded-md shadow-md p-2 text-xs text-gray-700">
+                  {damage.reason}
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="text-sm text-gray-500">No rejected claims.</p>
+        )}
       </div>
     </div>
   );

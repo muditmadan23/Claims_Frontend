@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { API_BASE_URL } from '@/lib/config';
 
 interface LoginFormData {
@@ -16,6 +17,7 @@ interface FormErrors {
 }
 
 export default function LoginPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: ''
@@ -92,13 +94,15 @@ export default function LoginPage() {
 
       const data = await response.json();
 
-      if (data.access_token) {
-        localStorage.setItem('authToken', data.access_token);
-        localStorage.setItem('tokenType', data.token_type);
-      }
-      if (data.name) localStorage.setItem('name', data.name);
-      if (data.username) localStorage.setItem('username', data.username);
-  window.location.href = '/';
+      // Store user data and token in localStorage
+      localStorage.setItem('authToken', data.access_token);
+      localStorage.setItem('tokenType', data.token_type);
+      localStorage.setItem('userId', data.user.id.toString());
+      localStorage.setItem('name', data.user.name);
+      localStorage.setItem('email', data.user.email);
+      
+      // Redirect to home page
+      router.push('/home');
 
     } catch (error) {
       setErrors({

@@ -2,72 +2,104 @@
 
 
 import Navbar from "@/components/Navbar";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { API_BASE_URL } from "@/lib/config";
 
-
-const claims = [
-  {
-    id: "MC-001-2023-01",
-    date: "01/15/2023",
-    vehicle: "Honda Civic (ABC-123)",
-    type: "Collision",
-    status: "Pending",
-  },
-  {
-    id: "MC-002-2023-02",
-    date: "02/20/2023",
-    vehicle: "Toyota Camry (XYZ-789)",
-    type: "Theft",
-    status: "Pending",
-  },
-  {
-    id: "MC-003-2023-03",
-    date: "03/10/2023",
-    vehicle: "Ford F-150 (PQR-456)",
-    type: "Natural Disaster",
-    status: "Pending",
-  },
-  {
-    id: "MC-004-2023-04",
-    date: "04/05/2023",
-    vehicle: "Tesla Model 3 (TSL-987)",
-    type: "Vandalism",
-    status: "Pending",
-  },
-  {
-    id: "MC-005-2023-05",
-    date: "05/18/2023",
-    vehicle: "BMW X5 (BMD-321)",
-    type: "Collision",
-    status: "Pending",
-  },
-  {
-    id: "MC-006-2023-06",
-    date: "06/22/2023",
-    vehicle: "Mercedes-Benz C-Class (MBZ-654)",
-    type: "Minor Accident",
-    status: "Pending",
-  },
-];
+interface ClaimData {
+  claim: {
+    claim_id: string;
+    created_at: string;
+    status: string;
+  };
+  image_analysis: {
+    analysis_type: string;
+  };
+  driving_license: {
+    dl_number: string;
+    name: string;
+  };
+  policy: {
+    policy_number: string;
+    license_plate: string;
+  };
+}
 
 const statusStyles: Record<string, string> = {
   Pending: "bg-yellow-100 text-yellow-800 border border-yellow-200",
 };
 
 export default function DashboardClaimHistory() {
+  const [claims, setClaims] = useState<ClaimData[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [vehicle, setVehicle] = useState("");
   const router = useRouter();
 
+  useEffect(() => {
+    const fetchClaims = async () => {
+      try {
+        const token = localStorage.getItem('authToken');
+        const response = await fetch(`${API_BASE_URL}/api/claim/my-claims-joined`, {
+          method: "GET",
+          headers: {
+            "accept": "application/json",
+            'Authorization': token ? `Bearer ${token}` : '',
+          },
+        });
+
+        if (response.ok) {
+          const data: ClaimData[] = await response.json();
+          setClaims(data);
+        }
+      } catch (error) {
+        console.error("Error fetching claims:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClaims();
+  }, []);
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+  };
+
   const filtered = claims.filter((c) => {
+    const claimId = c.claim.claim_id;
+    const vehicleNumber = c.driving_license?.dl_number || "";
+    const name = c.driving_license?.name || "";
+    const policyNumber = c.policy?.policy_number || "";
+    const licensePlate = c.policy?.license_plate || "";
+    const searchLower = search.toLowerCase();
+    
     return (
-      (!search || c.id.toLowerCase().includes(search.toLowerCase()) || c.vehicle.toLowerCase().includes(search.toLowerCase())) &&
-      (!status || c.status === status) &&
-      (!vehicle || c.vehicle === vehicle)
+      (!search || claimId.toLowerCase().includes(searchLower) || vehicleNumber.toLowerCase().includes(searchLower) || name.toLowerCase().includes(searchLower) || policyNumber.toLowerCase().includes(searchLower) || licensePlate.toLowerCase().includes(searchLower)) &&
+      (!status || status === "All Statuses" || c.claim.status === status) &&
+      (!vehicle || vehicle === "All Vehicles" || licensePlate === vehicle)
     );
   });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#fafbfc]">
+        <Navbar />
+        <main className="px-8 py-8">
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1F4A75]"></div>
+            <span className="ml-2 text-gray-600">Loading claims...</span>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#fafbfc]">
@@ -101,7 +133,7 @@ export default function DashboardClaimHistory() {
               onChange={e => setVehicle(e.target.value)}
             >
               <option value="">All Vehicles</option>
-              {Array.from(new Set(claims.map(c => c.vehicle))).map(v => (
+              {Array.from(new Set(claims.map(c => c.policy?.license_plate).filter(Boolean))).map(v => (
                 <option key={v} value={v}>{v}</option>
               ))}
             </select>
@@ -112,38 +144,42 @@ export default function DashboardClaimHistory() {
             <thead className="bg-[#23272f]/90 backdrop-blur-sm">
               <tr className="h-[43px]">
                 <th className="px-4 py-3 text-xs font-medium text-white text-left">Claim ID</th>
+                <th className="px-4 py-3 text-xs font-medium text-white text-left">Name</th>
+                <th className="px-4 py-3 text-xs font-medium text-white text-left">DL Number</th>
+                <th className="px-4 py-3 text-xs font-medium text-white text-left">License Plate</th>
                 <th className="px-4 py-3 text-xs font-medium text-white text-left">Date Filed</th>
-                <th className="px-4 py-3 text-xs font-medium text-white text-left">Vehicle</th>
-                <th className="px-4 py-3 text-xs font-medium text-white text-left">Claim Type</th>
+                <th className="px-4 py-3 text-xs font-medium text-white text-left">Policy Number</th>
                 <th className="px-4 py-3 text-xs font-medium text-white text-left">Status</th>
-                <th className="px-4 py-3 text-xs font-medium text-white text-left">Actions</th>
+                <th className="px-4 py-3 text-xs font-medium text-white text-left">Report</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filtered.map((c) => (
-                <tr key={c.id} className="hover:bg-gray-50 transition-colors text-xs font-medium text-[#767575]">
-                  <td className="px-4 py-3 text-[#222] font-normal">{c.id}</td>
-                  <td className="px-4 py-3">{c.date}</td>
-                  <td className="px-4 py-3">{c.vehicle}</td>
-                  <td className="px-4 py-3">{c.type}</td>
+                <tr key={c.claim.claim_id} className="hover:bg-gray-50 transition-colors text-xs font-medium text-[#767575]">
+                  <td className="px-4 py-3 text-[#222] font-normal">{c.claim.claim_id}</td>
+                  <td className="px-4 py-3">{c.driving_license?.name || "N/A"}</td>
+                  <td className="px-4 py-3">{c.driving_license?.dl_number || "N/A"}</td>
+                  <td className="px-4 py-3">{c.policy?.license_plate || "N/A"}</td>
+                  <td className="px-4 py-3">{formatDate(c.claim.created_at)}</td>
+                  <td className="px-4 py-3">{c.policy?.policy_number || "N/A"}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[c.status] || "bg-yellow-100 text-yellow-800 border border-yellow-200"}`}>
-                      {c.status}
+                    <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${statusStyles["Pending"]}`}>
+                      Pending
                     </span>
                   </td>
                   <td className="px-4 py-3">
                     <button
                       className="text-[#1F4A75] hover:underline cursor-pointer bg-transparent p-0"
-                      onClick={() => router.push("/results")}
+                      onClick={() => router.push(`/results/${c.claim.claim_id}`)}
                     >
-                      View Details
+                      View Report
                     </button>
                   </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-gray-400">No claims found.</td>
+                  <td colSpan={8} className="text-center py-8 text-gray-400">No claims found.</td>
                 </tr>
               )}
             </tbody>
