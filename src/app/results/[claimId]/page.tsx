@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import VehicleInformationCard from "@/components/VehicleInformationCard";
-import ClaimTimeline from "@/components/ClaimTimeline";
+import ClaimTimeline, { TimelineItem } from "@/components/ClaimTimeline";
 import MatchedDamagesCard from "../components/MatchedDamagesCard";
 import DoubtfulDamagesCard from "../components/DoubtfulDamagesCard";
 import RejectedClaimsCard from "../components/RejectedClaimsCard";
@@ -12,7 +12,9 @@ import UploadedImagesSection from "../components/UploadedImagesSection";
 import SummaryCard from "../components/SummaryCard";
 import AssessmentSummaryCard from "../components/AssessmentSummaryCard";
 import { Download, Share2 } from "lucide-react";
-import { API_BASE_URL } from "@/lib/config";
+import { API_BASE_URL, apiCall } from "@/lib/config";
+import { useToast } from "@/components/ui/Toast";
+import LoadingIndicator from "@/components/ui/LoadingIndicator";
 
 interface CategorizedParts {
   relevant_damages: { part: string; reason: string }[];
@@ -104,28 +106,28 @@ export default function UploadResultPage() {
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
+  const { show } = useToast();
 
   useEffect(() => {
     const fetchAllClaimsData = async () => {
       try {
-        const token = localStorage.getItem('authToken');
-        if (!token) {
-          setError("No authentication token found");
-          setLoading(false);
+        // Fetch all claims data
+        const response = await apiCall(`${API_BASE_URL}/api/claim/my-claims-joined`, {
+          method: "GET",
+        });
+
+        if (response.is401) {
+          // Handle 401 error with toast only (no popup/redirect)
+          const errorData = await response.json();
+          show({
+            message: errorData.message || "Session expired. Please login again.",
+            type: "error",
+          });
           return;
         }
 
-        // Fetch all claims data
-        const res = await fetch(`${API_BASE_URL}/api/claim/my-claims-joined`, {
-          method: "GET",
-          headers: {
-            "accept": "application/json",
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (!res.ok) throw new Error("Failed to fetch claims data");
-        const claimsData: ClaimData[] = await res.json();
+        if (!response.ok) throw new Error("Failed to fetch claims data");
+        const claimsData: ClaimData[] = await response.json();
 
         // Find the specific claim by claimId
         const specificClaim = claimsData.find(claim => claim.claim.claim_id === claimId);
@@ -208,8 +210,37 @@ export default function UploadResultPage() {
 
   const combinedDamages = getCombinedDamages();
 
+
+  // Build timeline items using available timestamps (all timestamps are already in IST)
+  const timeline: TimelineItem[] = [];
+  if (claimData?.claim?.created_at) {
+    timeline.push({
+      title: "Uploaded Documents",
+      timestamp: claimData.claim.created_at,
+      color: "bg-blue-500",
+      completed: true
+    });
+  }
+  // Use estimate_parts[0]?.created_at for AI Analysis Completed if available
+  if (claimData?.estimate_parts && claimData.estimate_parts.length > 0 && claimData.estimate_parts[0].created_at) {
+    timeline.push({
+      title: "AI Analysis Completed",
+      timestamp: claimData.estimate_parts[0].created_at,
+      color: "bg-green-500",
+      completed: true
+    });
+  }
+  // (No summary completed event)
+
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen bg-[#fafbfc] flex flex-col">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center py-12">
+          <LoadingIndicator />
+        </main>
+      </div>
+    );
   }
 
   return (
@@ -267,7 +298,7 @@ export default function UploadResultPage() {
                 Download PDF Report
               </button>
             </div>
-            <ClaimTimeline />
+            <ClaimTimeline timeline={timeline} />
           </div>
         </div>
         <div className="mt-8 w-full flex justify-center px-4">

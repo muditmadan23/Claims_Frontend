@@ -4,6 +4,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import FadedTextLoader from "@/components/FadedTextLoader";
+import LoadingIndicator from "@/components/ui/LoadingIndicator";
 import { API_BASE_URL } from "@/lib/config";
 import { Shield, Search as SearchIcon, FileText } from "lucide-react";
 
@@ -19,6 +20,7 @@ export default function UploadPageWithClaimId() {
     left: null,
     right: null,
   });
+  const [submittingImages, setSubmittingImages] = useState(false);
   const [licenseImage, setLicenseImage] = useState<File | null>(null);
   const [licenseExtractLoading, setLicenseExtractLoading] = useState(false);
   const [licenseExtractError, setLicenseExtractError] = useState<string>("");
@@ -381,10 +383,10 @@ export default function UploadPageWithClaimId() {
           <div className="flex-1 flex items-center">
             {/* Progress bar with 6 steps */}
             <div className="flex flex-col items-center flex-1">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs mb-1 bg-green-600`}>1</div>
-              <span className={`text-xs font-medium text-green-600`}>Policy</span>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs mb-1 bg-black`}>1</div>
+              <span className={`text-xs font-medium text-black`}>Policy</span>
             </div>
-            <div className={`h-1 bg-green-600 flex-1 mx-2`} />
+            <div className={`h-1 bg-black flex-1 mx-2`} />
             <div className="flex flex-col items-center flex-1">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs mb-1 ${step >= 2 ? 'bg-black' : 'bg-gray-200 text-black'}`}>2</div>
               <span className={`text-xs font-medium ${step === 2 ? 'text-black' : 'text-gray-400'}`}>License</span>
@@ -519,7 +521,6 @@ export default function UploadPageWithClaimId() {
           {/* Step 3: Upload Car Images */}
           {step === 3 && (
             <div className="w-full max-w-5xl mx-auto">
-              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {[
                   { key: 'front', label: 'Front View', desc: "Upload a clear image of the car's front view." },
@@ -548,20 +549,22 @@ export default function UploadPageWithClaimId() {
                       <input type="file" accept="image/*" className="hidden" onChange={handleImageChange(key)} />
                       <div className="w-full bg-gray-100 rounded px-4 py-2 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200 transition">Upload</div>
                     </label>
-                    {/* No preview below upload button */}
                   </div>
                 ))}
               </div>
               <div className="flex justify-end mt-8">
                 <button
-                  className="bg-black text-white px-8 py-3 rounded font-semibold transition hover:cursor-pointer"
+                  className="bg-black text-white px-8 py-3 rounded font-semibold transition hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={async () => {
+                    setSubmittingImages(true);
                     await saveImagesToLocalStorage();
+                    await analyzeImages();
                     setStep(4);
-                    analyzeImages();
+                    setSubmittingImages(false);
                   }}
                   type="button"
-                >Next</button>
+                  disabled={submittingImages}
+                >{submittingImages ? "Loading..." : "Next"}</button>
               </div>
             </div>
           )}
@@ -685,20 +688,17 @@ export default function UploadPageWithClaimId() {
                     <div className="mt-6 flex justify-end">
                       {extractedParts.length > 0 && !estimateLoading ? (
                         <button
-                          className="px-8 py-3 rounded font-semibold transition bg-black text-white hover:bg-gray-900 cursor-pointer"
-                          onClick={() => {
+                          className="px-8 py-3 rounded font-semibold transition bg-black text-white hover:bg-gray-900 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={async () => {
                             setSubmitting(true);
                             setStep(6);
-                            // Save aiParts to localStorage for results page
-                            // Removed as per request
-                            setTimeout(() => {
-                              setSubmitting(false);
-                              router.push(`/results/${claimId}`);
-                              callSummaryApis();
-                            }, 2000);
+                            await callSummaryApis();
+                            setSubmitting(false);
+                            router.push(`/results/${claimId}`);
                           }}
                           type="button"
-                        >Submit</button>
+                          disabled={submitting}
+                        >{submitting ? "Submitting..." : "Submit"}</button>
                       ) : null}
                     </div>
                   </div>
@@ -707,15 +707,11 @@ export default function UploadPageWithClaimId() {
             </>
           )}
 
-          {/* Step 6: Submission Progress Bar */}
+          {/* Step 6: Loader and Redirect */}
           {step === 6 && (
-            <div className="w-full max-w-3xl mx-auto mt-8">
-              <div className="bg-white rounded-xl shadow p-8 flex flex-col items-center">
-                <h2 className="text-2xl font-bold mb-4 text-blue-700">Submitting...</h2>
-                <div className="w-full bg-gray-200 rounded-full h-4">
-                  <div className="bg-blue-600 h-4 rounded-full animate-pulse" style={{ width: '100%' }}></div>
-                </div>
-                <p className="text-gray-700 text-lg mt-4">Please wait while we process your submission.</p>
+            <div className="w-full max-w-3xl mx-auto mt-24 flex flex-col items-center justify-center">
+              <div className="flex flex-col items-center justify-center">
+                <LoadingIndicator message="Loading..." />
               </div>
             </div>
           )}

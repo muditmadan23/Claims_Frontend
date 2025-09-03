@@ -1,8 +1,10 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { API_BASE_URL } from '@/lib/config';
+import { useToast } from '@/components/ui/Toast';
+import Modal from '@/components/ui/Modal';
 
 interface FormErrors {
   password?: string;
@@ -12,6 +14,9 @@ interface FormErrors {
 
 export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { show } = useToast();
+  const [showSuccess, setShowSuccess] = useState(false);
   const token = searchParams.get('token') || '';
   const [tokenValid, setTokenValid] = useState<null | boolean>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -63,7 +68,6 @@ export default function ResetPasswordPage() {
     if (!validateForm()) return;
     setIsLoading(true);
     setErrors({});
-    setSuccessMessage('');
     try {
       const response = await fetch(`${API_BASE_URL}/api/users/reset-password`, {
         method: 'POST',
@@ -78,10 +82,12 @@ export default function ResetPasswordPage() {
         const errorData = await response.json();
         throw new Error(errorData.detail || 'Failed to reset password');
       }
-      setSuccessMessage('Password reset successful! You can now log in.');
+      show({ type: 'success', title: 'Password updated', message: 'Your password has been reset.' });
+      setShowSuccess(true);
       setFormData({ password: '', confirm_password: '' });
     } catch (error) {
-      setErrors({ general: error instanceof Error ? error.message : 'An error occurred' });
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      show({ type: 'error', title: 'Update failed', message });
     } finally {
       setIsLoading(false);
     }
@@ -118,16 +124,6 @@ export default function ResetPasswordPage() {
           )}
           {tokenValid && (
             <>
-              {successMessage && (
-                <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded text-center">
-                  {successMessage}
-                </div>
-              )}
-              {errors.general && (
-                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded text-center">
-                  {errors.general}
-                </div>
-              )}
               <form className="space-y-5" onSubmit={handleSubmit}>
                 <div>
                   <input
@@ -168,6 +164,23 @@ export default function ResetPasswordPage() {
           </div>
         </div>
       </div>
+      <Modal
+        open={showSuccess}
+        onClose={() => setShowSuccess(false)}
+        title="Password reset successful"
+        footer={(
+          <div className="flex justify-end">
+            <button
+              onClick={() => router.push('/login')}
+              className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-900"
+            >
+              Go to Login
+            </button>
+          </div>
+        )}
+      >
+        <p className="text-sm text-gray-700">You can now sign in with your new password.</p>
+      </Modal>
     </div>
   );
 }

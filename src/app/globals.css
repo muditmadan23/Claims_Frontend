@@ -31,6 +31,11 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Decorative hero glow used on the home page image */
+.hero-glow {
+  background: radial-gradient(120px circle at 60% 40%, rgba(31, 41, 55, 0.15), transparent 60%);
+}
+
 /* Utility classes for consistent blue/black usage */
 .text-primary-blue {
   color: var(--primary-blue) !important;

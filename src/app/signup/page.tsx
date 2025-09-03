@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { API_BASE_URL } from '@/lib/config';
+import { useToast } from '@/components/ui/Toast';
+import Modal from '@/components/ui/Modal';
 
 interface SignupFormData {
   name: string;
@@ -22,6 +24,8 @@ interface FormErrors {
 
 export default function SignupPage() {
   const router = useRouter();
+  const { show } = useToast();
+  const [showSuccess, setShowSuccess] = useState(false);
   const [formData, setFormData] = useState<SignupFormData>({
     name: '',
     email: '',
@@ -31,7 +35,6 @@ export default function SignupPage() {
   
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -96,7 +99,6 @@ export default function SignupPage() {
 
     setIsLoading(true);
     setErrors({});
-    setSuccessMessage('');
 
     try {
 
@@ -118,26 +120,22 @@ export default function SignupPage() {
       }
 
       const data = await response.json();
-      
+
       // Store user data and token in localStorage
       localStorage.setItem('authToken', data.access_token);
       localStorage.setItem('tokenType', data.token_type);
       localStorage.setItem('userId', data.user.id.toString());
       localStorage.setItem('name', data.user.name);
       localStorage.setItem('email', data.user.email);
-      
-      setSuccessMessage('Account created successfully! You are now logged in.');
+
+      setShowSuccess(true);
+      show({ type: 'success', title: 'Account created', message: 'Welcome to MotorClaimPro!' });
       setFormData({ name: '', email: '', password: '', confirmPassword: '' });
-      
-      // Redirect to home page after a short delay
-      setTimeout(() => {
-        router.push('/home');
-      }, 2000);
+      setTimeout(() => { router.push('/home'); }, 1500);
 
     } catch (error) {
-      setErrors({
-        general: error instanceof Error ? error.message : 'An error occurred during registration'
-      });
+      const message = error instanceof Error ? error.message : 'An error occurred during registration';
+      show({ type: 'error', title: 'Signup failed', message });
     } finally {
       setIsLoading(false);
     }
@@ -164,18 +162,6 @@ export default function SignupPage() {
           <p className="mb-6 text-gray-600 text-sm">
             Already have an account? <Link href="/login" className="text-blue-600 font-medium hover:underline"><span className="hover:underline">Login</span></Link>
           </p>
-          
-          {successMessage && (
-            <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
-              {successMessage}
-            </div>
-          )}
-          
-          {errors.general && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-              {errors.general}
-            </div>
-          )}
           
           <form className="space-y-5" onSubmit={handleSubmit}>
             <div>
@@ -236,6 +222,9 @@ export default function SignupPage() {
           </form>
         </div>
       </div>
+      <Modal open={showSuccess} onClose={() => setShowSuccess(false)} title="You're all set!">
+        <p className="text-sm text-gray-700">Your account is ready. Taking you to your dashboard...</p>
+      </Modal>
     </div>
   );
 }

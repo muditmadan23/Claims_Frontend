@@ -4,7 +4,8 @@
 import Navbar from "@/components/Navbar";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { API_BASE_URL } from "@/lib/config";
+import { API_BASE_URL, apiCall } from "@/lib/config";
+import { useToast } from "@/components/ui/Toast";
 
 interface ClaimData {
   claim: {
@@ -36,18 +37,24 @@ export default function DashboardClaimHistory() {
   const [status, setStatus] = useState("");
   const [vehicle, setVehicle] = useState("");
   const router = useRouter();
+  const { show } = useToast();
 
   useEffect(() => {
     const fetchClaims = async () => {
       try {
-        const token = localStorage.getItem('authToken');
-        const response = await fetch(`${API_BASE_URL}/api/claim/my-claims-joined`, {
+        const response = await apiCall(`${API_BASE_URL}/api/claim/my-claims-joined`, {
           method: "GET",
-          headers: {
-            "accept": "application/json",
-            'Authorization': token ? `Bearer ${token}` : '',
-          },
         });
+
+        if (response.is401) {
+          // Handle 401 error with toast
+          show({ type: 'error', title: 'Session Expired', message: 'Your session has expired. Please login again.' });
+          // Redirect after a short delay
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 2000);
+          return;
+        }
 
         if (response.ok) {
           const data: ClaimData[] = await response.json();

@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { API_BASE_URL } from '@/lib/config';
+import { useToast } from '@/components/ui/Toast';
+import Modal from '@/components/ui/Modal';
 
 interface LoginFormData {
   email: string;
@@ -18,6 +20,8 @@ interface FormErrors {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { show } = useToast();
+    // const [showSuccess, setShowSuccess] = useState(false);
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: ''
@@ -100,14 +104,14 @@ export default function LoginPage() {
       localStorage.setItem('userId', data.user.id.toString());
       localStorage.setItem('name', data.user.name);
       localStorage.setItem('email', data.user.email);
-      
-      // Redirect to home page
-      router.push('/home');
+
+  // setShowSuccess(true); // removed, only toast will show
+      show({ type: 'success', title: 'Login successful', message: `Welcome back${data.user?.name ? ", " + data.user.name : ''}!` });
+      setTimeout(() => router.push('/home'), 900);
 
     } catch (error) {
-      setErrors({
-        general: error instanceof Error ? error.message : 'An error occurred during login'
-      });
+      const message = error instanceof Error ? error.message : 'An error occurred during login';
+      show({ type: 'error', title: 'Login failed', message });
     } finally {
       setIsLoading(false);
     }
@@ -134,12 +138,6 @@ export default function LoginPage() {
           <p className="mb-6 text-gray-600 text-sm">
             Don't have an account? <Link href="/signup" className="text-blue-600 font-medium hover:underline"><span className="hover:underline">Sign up</span></Link>
           </p>
-          
-          {errors.general && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-              {errors.general}
-            </div>
-          )}
           
           <form className="space-y-5" onSubmit={handleSubmit}>
             <div>
@@ -179,6 +177,7 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+      
     </div>
   );
 }
