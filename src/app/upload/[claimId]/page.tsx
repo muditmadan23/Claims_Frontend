@@ -50,7 +50,7 @@ export default function UploadPageWithClaimId() {
   const [submitting, setSubmitting] = useState(false);
   const [estimateLoading, setEstimateLoading] = useState(false);
   const [estimateError, setEstimateError] = useState<string>("");
-  const [extractedParts, setExtractedParts] = useState<string[]>([]);
+  const [extractedParts, setExtractedParts] = useState<{part: string, reason: string, cost: number}[]>([]);
   // AI Interpreted Parts state
   const [aiParts, setAiParts] = useState<any>(null);
   const [aiPartsLoading, setAiPartsLoading] = useState(false);
@@ -679,7 +679,9 @@ export default function UploadPageWithClaimId() {
                       <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-4 text-gray-800">
                         <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 list-disc pl-5">
                           {extractedParts.map((part, idx) => (
-                            <li key={idx} className="py-1 text-base font-medium text-gray-700">{part}</li>
+                            <li key={idx} className="py-1 text-base font-medium text-gray-700">
+                              {part.part} - {part.reason} (${part.cost.toFixed(2)})
+                            </li>
                           ))}
                         </ul>
                       </div>
