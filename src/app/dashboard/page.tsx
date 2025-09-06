@@ -6,6 +6,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { API_BASE_URL, apiCall } from "@/lib/config";
 import { useToast } from "@/components/ui/Toast";
+import { Trash2 } from "lucide-react";
+import Modal from "@/components/ui/Modal";
 
 interface ClaimData {
   claim: {
@@ -36,6 +38,8 @@ export default function DashboardClaimHistory() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [vehicle, setVehicle] = useState("");
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [claimToDelete, setClaimToDelete] = useState<string | null>(null);
   const router = useRouter();
   const { show } = useToast();
 
@@ -58,7 +62,8 @@ export default function DashboardClaimHistory() {
 
         if (response.ok) {
           const data: ClaimData[] = await response.json();
-          setClaims(data);
+          const sortedData = data.sort((a, b) => new Date(b.claim.created_at).getTime() - new Date(a.claim.created_at).getTime());
+          setClaims(sortedData);
         }
       } catch (error) {
         console.error("Error fetching claims:", error);
@@ -69,6 +74,54 @@ export default function DashboardClaimHistory() {
 
     fetchClaims();
   }, []);
+
+  const openDeleteModal = (claimId: string) => {
+    setClaimToDelete(claimId);
+    setIsDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setClaimToDelete(null);
+    setIsDeleteModalOpen(false);
+  };
+
+  const confirmDelete = async () => {
+    if (!claimToDelete) return;
+
+    try {
+      const response = await apiCall(`${API_BASE_URL}/api/claim/${claimToDelete}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        show({
+          type: "success",
+          title: "Claim Deleted",
+          message: `Claim ${claimToDelete} has been deleted successfully.`,
+        });
+        setClaims((prevClaims) =>
+          prevClaims.filter((c) => c.claim.claim_id !== claimToDelete)
+        );
+      } else {
+        const errorData = await response.json();
+        show({
+          type: "error",
+          title: "Deletion Failed",
+          message:
+            errorData.message || "Failed to delete the claim. Please try again.",
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting claim:", error);
+      show({
+        type: "error",
+        title: "Error",
+        message: "An unexpected error occurred. Please try again.",
+      });
+    } finally {
+      closeDeleteModal();
+    }
+  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -158,6 +211,7 @@ export default function DashboardClaimHistory() {
                 <th className="px-4 py-3 text-xs font-medium text-white text-left">Policy Number</th>
                 <th className="px-4 py-3 text-xs font-medium text-white text-left">Status</th>
                 <th className="px-4 py-3 text-xs font-medium text-white text-left">Report</th>
+                <th className="px-4 py-3 text-xs font-medium text-white text-left"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -182,17 +236,48 @@ export default function DashboardClaimHistory() {
                       View Report
                     </button>
                   </td>
+                  <td className="px-4 py-3">
+                    <button
+                      className="text-red-500 hover:text-red-700 cursor-pointer bg-transparent p-0"
+                      onClick={() => openDeleteModal(c.claim.claim_id)}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="text-center py-8 text-gray-400">No claims found.</td>
+                  <td colSpan={9} className="text-center py-8 text-gray-400">No claims found.</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
       </main>
+      <Modal
+        open={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        title="Confirm Deletion"
+        footer={
+          <div className="flex justify-end gap-3">
+            <button
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1F4A75]"
+              onClick={closeDeleteModal}
+            >
+              Cancel
+            </button>
+            <button
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              onClick={confirmDelete}
+            >
+              Delete
+            </button>
+          </div>
+        }
+      >
+        <p>Are you sure you want to delete claim <strong>{claimToDelete}</strong>? This action cannot be undone.</p>
+      </Modal>
     </div>
   );
 }
